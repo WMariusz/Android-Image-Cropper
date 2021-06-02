@@ -1,6 +1,7 @@
 package com.canhub.cropper.sample.crop_image_view.app
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Rect
@@ -65,7 +66,7 @@ internal class SCropImageViewFragment :
         binding.cropImageView.let {
             it.setOnSetImageUriCompleteListener(this)
             it.setOnCropImageCompleteListener(this)
-            if (savedInstanceState == null) it.imageResource = R.drawable.cat
+            if (savedInstanceState == null) it.setImageUriAsync(getCatUri(requireContext()))
         }
 
         binding.settings.setOnClickListener {
@@ -177,7 +178,12 @@ internal class SCropImageViewFragment :
                     handleCropResult(CropImage.getActivityResult(data))
                 CropImage.PICK_IMAGE_CHOOSER_REQUEST_CODE -> {
                     val ctx = context
-                    ctx?.let { Log.v("File Path", CropImage.getPickImageResultUriFilePath(it, data)) }
+                    ctx?.let {
+                        Log.v(
+                            "File Path",
+                            CropImage.getPickImageResultUriFilePath(it, data)
+                        )
+                    }
                     val imageUri = ctx?.let { CropImage.getPickImageResultUriContent(it, data) }
 
                     if (imageUri != null &&
@@ -245,3 +251,6 @@ internal class SCropImageViewFragment :
         onOptionsApplySelected(options)
     }
 }
+
+private fun getCatUri(context: Context): Uri =
+    Uri.parse("android.resource://${context.packageName}/" + R.drawable.cat)
