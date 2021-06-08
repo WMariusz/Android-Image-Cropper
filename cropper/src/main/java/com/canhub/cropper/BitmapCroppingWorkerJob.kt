@@ -1,19 +1,20 @@
 package com.canhub.cropper
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
 import androidx.annotation.Nullable
-import androidx.fragment.app.FragmentActivity
-import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.lang.ref.WeakReference
+import kotlin.coroutines.CoroutineContext
 
 class BitmapCroppingWorkerJob internal constructor(
-    private val activity: FragmentActivity,
+    private val context: Context,
     private val cropImageViewReference: WeakReference<CropImageView>,
     val uri: Uri?,
     private val bitmap: Bitmap?,
@@ -31,13 +32,14 @@ class BitmapCroppingWorkerJob internal constructor(
     private val options: CropImageView.RequestSizeOptions,
     private val saveUri: Uri?,
     private val saveCompressFormat: Bitmap.CompressFormat? = Bitmap.CompressFormat.JPEG,
-    private val saveCompressQuality: Int
-) {
+    private val saveCompressQuality: Int,
+    override val coroutineContext: CoroutineContext
+) : CoroutineScope {
 
     private var currentJob: Job? = null
 
     constructor(
-        activity: FragmentActivity,
+        context: Context,
         cropImageView: CropImageView,
         bitmap: Bitmap?,
         cropPoints: FloatArray,
@@ -52,9 +54,10 @@ class BitmapCroppingWorkerJob internal constructor(
         options: CropImageView.RequestSizeOptions,
         saveUri: Uri?,
         @Nullable saveCompressFormat: Bitmap.CompressFormat?,
-        saveCompressQuality: Int
+        saveCompressQuality: Int,
+        coroutineContext: CoroutineContext
     ) : this(
-        activity = activity,
+        context = context,
         cropImageViewReference = WeakReference(cropImageView),
         uri = null,
         bitmap = bitmap,
@@ -72,11 +75,12 @@ class BitmapCroppingWorkerJob internal constructor(
         options = options,
         saveUri = saveUri,
         saveCompressFormat = saveCompressFormat ?: Bitmap.CompressFormat.JPEG,
-        saveCompressQuality = saveCompressQuality
+        saveCompressQuality = saveCompressQuality,
+        coroutineContext = coroutineContext
     )
 
     constructor(
-        activity: FragmentActivity,
+        context: Context,
         cropImageView: CropImageView,
         uri: Uri?,
         cropPoints: FloatArray,
@@ -93,9 +97,10 @@ class BitmapCroppingWorkerJob internal constructor(
         options: CropImageView.RequestSizeOptions,
         saveUri: Uri?,
         @Nullable saveCompressFormat: Bitmap.CompressFormat,
-        saveCompressQuality: Int
+        saveCompressQuality: Int,
+        coroutineContext: CoroutineContext
     ) : this(
-        activity = activity,
+        context = context,
         cropImageViewReference = WeakReference(cropImageView),
         uri = uri,
         bitmap = null,
@@ -113,18 +118,19 @@ class BitmapCroppingWorkerJob internal constructor(
         options = options,
         saveUri = saveUri,
         saveCompressFormat = saveCompressFormat,
-        saveCompressQuality = saveCompressQuality
+        saveCompressQuality = saveCompressQuality,
+        coroutineContext = coroutineContext
     )
 
     fun start() {
-        currentJob = activity.lifecycleScope.launch(Dispatchers.Default) {
+        currentJob = launch(Dispatchers.Default) {
             try {
                 if (isActive) {
                     val bitmapSampled: BitmapUtils.BitmapSampled
                     when {
                         uri != null -> {
                             bitmapSampled = BitmapUtils.cropBitmap(
-                                activity,
+                                context,
                                 uri,
                                 cropPoints,
                                 degreesRotated,
@@ -168,7 +174,7 @@ class BitmapCroppingWorkerJob internal constructor(
                         )
                     } else {
                         BitmapUtils.writeBitmapToUri(
-                            activity,
+                            context,
                             resizedBitmap,
                             saveUri,
                             saveCompressFormat ?: Bitmap.CompressFormat.JPEG,

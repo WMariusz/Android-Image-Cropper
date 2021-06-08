@@ -19,11 +19,11 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.ProgressBar
 import androidx.exifinterface.media.ExifInterface
-import androidx.fragment.app.FragmentActivity
 import com.canhub.cropper.CropOverlayView.CropWindowChangeListener
 import com.canhub.cropper.utils.getFilePathFromUri
 import java.lang.ref.WeakReference
 import java.util.UUID
+import kotlin.coroutines.CoroutineContext
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
@@ -596,8 +596,8 @@ class CropImageView @JvmOverloads constructor(context: Context, attrs: Attribute
      * Gets the cropped image based on the current crop window.<br></br>
      * The result will be invoked to listener set by [ ][.setOnCropImageCompleteListener].
      */
-    fun getCroppedImageAsync() {
-        getCroppedImageAsync(0, 0, RequestSizeOptions.NONE)
+    fun getCroppedImageAsync(coroutineContext: CoroutineContext) {
+        getCroppedImageAsync(0, 0, RequestSizeOptions.NONE, coroutineContext)
     }
 
     /**
@@ -608,8 +608,8 @@ class CropImageView @JvmOverloads constructor(context: Context, attrs: Attribute
      * @param reqWidth the width to resize the cropped image to
      * @param reqHeight the height to resize the cropped image to
      */
-    fun getCroppedImageAsync(reqWidth: Int, reqHeight: Int) {
-        getCroppedImageAsync(reqWidth, reqHeight, RequestSizeOptions.RESIZE_INSIDE)
+    fun getCroppedImageAsync(reqWidth: Int, reqHeight: Int, coroutineContext: CoroutineContext) {
+        getCroppedImageAsync(reqWidth, reqHeight, RequestSizeOptions.RESIZE_INSIDE, coroutineContext)
     }
 
     /**
@@ -620,9 +620,9 @@ class CropImageView @JvmOverloads constructor(context: Context, attrs: Attribute
      * @param reqHeight the height to resize the cropped image to (see options)
      * @param options the resize method to use, see its documentation
      */
-    fun getCroppedImageAsync(reqWidth: Int, reqHeight: Int, options: RequestSizeOptions) {
+    fun getCroppedImageAsync(reqWidth: Int, reqHeight: Int, options: RequestSizeOptions, coroutineContext: CoroutineContext) {
         requireNotNull(mOnCropImageCompleteListener) { "mOnCropImageCompleteListener is not set" }
-        startCropWorkerTask(reqWidth, reqHeight, options, null, CompressFormat.JPEG, 0)
+        startCropWorkerTask(reqWidth, reqHeight, options, null, CompressFormat.JPEG, 0, coroutineContext)
     }
 
     /**
@@ -643,11 +643,12 @@ class CropImageView @JvmOverloads constructor(context: Context, attrs: Attribute
         saveCompressQuality: Int,
         reqWidth: Int,
         reqHeight: Int,
-        options: RequestSizeOptions = RequestSizeOptions.RESIZE_INSIDE
+        options: RequestSizeOptions = RequestSizeOptions.RESIZE_INSIDE,
+        coroutineContext: CoroutineContext
     ) {
         requireNotNull(mOnCropImageCompleteListener) { "mOnCropImageCompleteListener is not set" }
         startCropWorkerTask(
-            reqWidth, reqHeight, options, saveUri, saveCompressFormat, saveCompressQuality
+            reqWidth, reqHeight, options, saveUri, saveCompressFormat, saveCompressQuality, coroutineContext
         )
     }
 
@@ -722,7 +723,7 @@ class CropImageView @JvmOverloads constructor(context: Context, attrs: Attribute
      *
      * @param uri the URI to load the image from
      */
-    fun setImageUriAsync(uri: Uri?) {
+    fun setImageUriAsync(uri: Uri?, coroutineContext: CoroutineContext) {
         if (uri != null) {
             val currentTask =
                 if (mBitmapLoadingWorkerJob != null) mBitmapLoadingWorkerJob!!.get() else null
@@ -731,7 +732,7 @@ class CropImageView @JvmOverloads constructor(context: Context, attrs: Attribute
             clearImageInt()
             mCropOverlayView!!.initialCropWindowRect = null
             mBitmapLoadingWorkerJob =
-                WeakReference(BitmapLoadingWorkerJob((context as FragmentActivity), this, uri))
+                WeakReference(BitmapLoadingWorkerJob(context, this, uri, coroutineContext))
             mBitmapLoadingWorkerJob!!.get()!!.start()
             setProgressBarVisibility()
         }
@@ -982,7 +983,8 @@ class CropImageView @JvmOverloads constructor(context: Context, attrs: Attribute
         options: RequestSizeOptions,
         saveUri: Uri?,
         saveCompressFormat: CompressFormat,
-        saveCompressQuality: Int
+        saveCompressQuality: Int,
+        coroutineContext: CoroutineContext
     ) {
         val bitmap = mBitmap
         if (bitmap != null) {
@@ -999,7 +1001,7 @@ class CropImageView @JvmOverloads constructor(context: Context, attrs: Attribute
             ) {
                 WeakReference(
                     BitmapCroppingWorkerJob(
-                        (context as FragmentActivity),
+                        context,
                         this,
                         imageUri,
                         cropPoints,
@@ -1016,13 +1018,14 @@ class CropImageView @JvmOverloads constructor(context: Context, attrs: Attribute
                         options,
                         saveUri,
                         saveCompressFormat,
-                        saveCompressQuality
+                        saveCompressQuality,
+                        coroutineContext
                     )
                 )
             } else {
                 WeakReference(
                     BitmapCroppingWorkerJob(
-                        (context as FragmentActivity),
+                        context,
                         this,
                         bitmap,
                         cropPoints,
@@ -1037,7 +1040,8 @@ class CropImageView @JvmOverloads constructor(context: Context, attrs: Attribute
                         options,
                         saveUri,
                         saveCompressFormat,
-                        saveCompressQuality
+                        saveCompressQuality,
+                        coroutineContext
                     )
                 )
             }
